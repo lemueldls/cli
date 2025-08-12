@@ -11,31 +11,33 @@
     };
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    ...
-  } @ inputs: let
-    forAllSystems = fn:
-      nixpkgs.lib.genAttrs nixpkgs.lib.platforms.linux (
-        system: fn nixpkgs.legacyPackages.${system}
-      );
-  in {
-    formatter = forAllSystems (pkgs: pkgs.alejandra);
+  outputs =
+    {
+      self,
+      nixpkgs,
+      ...
+    }@inputs:
+    let
+      forAllSystems =
+        # fn: nixpkgs.lib.genAttrs nixpkgs.lib.platforms.linux (system: fn nixpkgs.legacyPackages.${system});
+        fn: nixpkgs.lib.genAttrs [ "x86_64-linux" ] (system: fn nixpkgs.legacyPackages.${system});
+    in
+    {
+      formatter = forAllSystems (pkgs: pkgs.alejandra);
 
-    packages = forAllSystems (pkgs: rec {
-      caelestia-cli = pkgs.callPackage ./default.nix {
-        rev = self.rev or self.dirtyRev;
-        caelestia-shell = inputs.caelestia-shell.packages.${pkgs.system}.default;
-      };
-      with-shell = caelestia-cli.override {withShell = true;};
-      default = caelestia-cli;
-    });
+      packages = forAllSystems (pkgs: rec {
+        caelestia-cli = pkgs.callPackage ./default.nix {
+          rev = self.rev or self.dirtyRev;
+          caelestia-shell = inputs.caelestia-shell.packages.${pkgs.system}.default;
+        };
+        with-shell = caelestia-cli.override { withShell = true; };
+        default = caelestia-cli;
+      });
 
-    devShells = forAllSystems (pkgs: {
-      default = pkgs.mkShellNoCC {
-        packages = [self.packages.${pkgs.system}.with-shell];
-      };
-    });
-  };
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShellNoCC {
+          packages = [ self.packages.${pkgs.system}.with-shell ];
+        };
+      });
+    };
 }
